@@ -1,0 +1,109 @@
+
+
+
+
+```{r}
+library(tidyverse)
+library(tidycensus)
+library(dplyr)
+library(here)
+library(ggplot2)
+```
+
+
+```{r}
+
+data = read.csv("annualized_statistics (1).csv")
+```
+
+
+```{r}
+# Filter data for Atlanta region
+atlanta_data = data |>
+  
+  filter(Latitude >= 33.5 & Latitude <= 34.1 & Longitude >= -84.6 & Longitude <= -84.2)
+
+```
+
+```{r}
+#not working for some reason
+#Filter data for the desired functional class
+atlanta_data <- atlanta_data |>
+ filter(Functional.Class == "1U : Urban Principal Arterial - Interstate")
+
+```
+
+
+```{r}
+# Add a column for the difference between Future AADT and Current AADT
+atlanta_data = atlanta_data |>
+  mutate(AADT_Difference = Future.AADT - AADT)
+```
+
+```{r}
+# Summary statistics for K-Factor, D-Factor, and AADT
+summary_stats <- atlanta_data |>
+  summarise(
+    avg_k_factor = mean(K.Factor, na.rm = TRUE),
+    avg_d_factor = mean(D.Factor, na.rm = TRUE),
+    avg_aadt = mean(AADT, na.rm = TRUE),
+    avg_future_aadt = mean(Future.AADT, na.rm = TRUE)
+  )
+print(summary_stats)
+```
+
+```{r}
+# Grouped summary by Functional Class
+grouped_stats = atlanta_data |>
+  group_by(Functional.Class) |>
+  summarise(
+    avg_k_factor = mean(K.Factor, na.rm = TRUE),
+    avg_d_factor = mean(D.Factor, na.rm = TRUE),
+    avg_aadt = mean(AADT, na.rm = TRUE),
+    avg_future_aadt = mean(Future.AADT, na.rm = TRUE),
+    avg_aadt_difference = mean(AADT_Difference, na.rm = TRUE)
+  )
+print(grouped_stats)
+
+```
+
+```{r}
+# Scatter plot: K-Factor vs. AADT
+ggplot(atlanta_data, aes(x = K.Factor, y = AADT, color = Functional.Class)) +
+  geom_point() +
+  labs(title = "K-Factor vs. AADT in Atlanta", x = "K-Factor", y = "AADT") +
+  theme_minimal()
+
+# Scatter plot: D-Factor vs. AADT
+ggplot(atlanta_data, aes(x = D.Factor, y = AADT, color = Functional.Class)) +
+  geom_point() +
+  labs(title = "D-Factor vs. AADT in Atlanta", x = "D-Factor", y = "AADT") +
+  theme_minimal()
+```
+
+```{r}
+
+# Bar chart: Comparison of AADT and Future AADT by Functional Class
+ggplot(atlanta_data, aes(x = Functional.Class, fill = Functional.Class)) +
+  geom_bar(aes(y = AADT), stat = "identity", position = "dodge") +
+  geom_bar(aes(y = Future.AADT), stat = "identity", position = "dodge", alpha = 0.7) +
+  labs(title = "AADT vs. Future AADT by Functional Class", y = "AADT", x = "Functional Class") +
+  theme_minimal()
+
+# Correlation analysis between K-Factor, D-Factor, and AADT
+correlation_matrix = atlanta_data |>
+  select(K.Factor, D.Factor, AADT) |>
+  cor(use = "complete.obs")
+print(correlation_matrix)
+```
+
+```{r}
+# Linear regression: AADT as a function of K-Factor and D-Factor
+model = lm(AADT ~ K.Factor + D.Factor, data = atlanta_data)
+summary(model)
+
+# Save cleaned Atlanta data for reference
+write.csv(atlanta_data, "atlanta_filtered_data.csv", row.names = FALSE)
+```
+
+
